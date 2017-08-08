@@ -9,6 +9,7 @@ let mainWidth: number;
 
 const RECT_SIZE = 50;
 
+/*
 enum HoverType {
   BIAS, WEIGHT
 }
@@ -27,6 +28,17 @@ let INPUTS: {[name: string]: InputFeature} = {
   "sinX": {f: (x, y) => Math.sin(x), label: "sin(X_1)"},
   "sinY": {f: (x, y) => Math.sin(y), label: "sin(X_2)"},
 };
+*/
+
+
+let nodeCoordinates = [{"x": 40, "y": 30}, {"x": 180, "y": 180},
+  {"x": 200, "y": 10}, {"x": 280, "y": 100}];
+let nodeConnections = [{"source": 0, "destination": 1}, {"source": 0, "destination": 2},
+  {"source": 2, "destination": 3}];
+
+//let packetIDs: cloud.PacketID[];
+//let packetID1 = new cloud.PacketID(0,0,0);
+//let packetIDs = [packetID1];
 
 
 class Player {
@@ -606,16 +618,16 @@ function drawLink2(
   let line = container.insert("path", ":first-child");
   //let source = node2coord[input.source.id];
   //let dest = node2coord[input.dest.id];
-  let source = input.source;
-  let dest = input.dest;
+  let src = input.source;
+  let dst = input.destination;
   let datum = {
     source: {
-      y: source.x + RECT_SIZE / 2 * (dest.x - source.x) / Math.abs(dest.x - source.x),
-      x: source.y - 12 * (dest.x - source.x) / Math.abs(dest.x - source.x)
+      y: src.x + RECT_SIZE / 2 * (dst.x - src.x) / Math.abs(dst.x - src.x),
+      x: src.y - 12 * (dst.x - src.x) / Math.abs(dst.x - src.x)
     },
     target: {
-      y: dest.x - RECT_SIZE / 2 * (dest.x - source.x) / Math.abs(dest.x - source.x),
-      x: dest.y - 12 * (dest.x - source.x) / Math.abs(dest.x - source.x)
+      y: dst.x - RECT_SIZE / 2 * (dst.x - src.x) / Math.abs(dst.x - src.x),
+      x: dst.y - 12 * (dst.x - src.x) / Math.abs(dst.x - src.x)
     }
   };
   //let diagonal = d3.svg.diagonal().projection(d => [d.y, d.x]);
@@ -629,7 +641,7 @@ function drawLink2(
 
   line.attr("marker-start", "url(#markerArrow)")
     .attr("class", "link")
-    .attr("id", "link" + input.source.id + "-" + input.dest.id)
+    .attr("id", "link" + input.source.id + "-" + input.destination.id)
     .attr("d", diagonal(datum));
 
   return line;
@@ -641,15 +653,15 @@ function drawLink(
     isFirst: boolean, index: number, length: number) {
   let line = container.insert("path", ":first-child");
   let source = node2coord[input.source.id];
-  let dest = node2coord[input.dest.id];
+  let destination = node2coord[input.destination.id];
   let datum = {
     source: {
       y: source.cx + RECT_SIZE / 2,
       x: source.cy
     },
     target: {
-      y: dest.cx - RECT_SIZE / 2,
-      x: dest.cy + ((index - (length - 1) / 2) / length) * 12
+      y: destination.cx - RECT_SIZE / 2,
+      x: destination.cy + ((index - (length - 1) / 2) / length) * 12
     }
   };
   //let diagonal = d3.svg.diagonal().projection(d => [d.y, d.x]);
@@ -663,7 +675,7 @@ function drawLink(
 
   line.attr("marker-start", "url(#markerArrow)")
     .attr("class", "link")
-    .attr("id", "link" + input.source.id + "-" + input.dest.id)
+    .attr("id", "link" + input.source.id + "-" + input.destination.id)
     .attr("d", diagonal(datum));
     //.attr("d", diagonal(datum, 0));
 
@@ -734,26 +746,6 @@ function updateUI(firstStep = false) {
 
 
 
-function constructInputIds(): string[] {
-  let result: string[] = [];
-  for (let inputName in INPUTS) {
-    if (state[inputName]) {
-      result.push(inputName);
-    }
-  }
-  return result;
-}
-
-function constructInput(x: number, y: number): number[] {
-  let input: number[] = [];
-  for (let inputName in INPUTS) {
-    if (state[inputName]) {
-      input.push(INPUTS[inputName].f(x, y));
-    }
-  }
-  return input;
-}
-
 function oneStep(): void {
   iter++;
 
@@ -775,11 +767,6 @@ function oneStep(): void {
 }
 
 
-let nodeCoordinates = [{"x": 40, "y": 30}, {"x": 180, "y": 180},
-  {"x": 200, "y": 10}, {"x": 280, "y": 100}];
-let nodeConnections = [{"source": 0, "destination": 1}, {"source": 0, "destination": 2},
-  {"source": 2, "destination": 3}];
-
 function reset(onStartup=false) {
   /*
   lineChart.reset();
@@ -799,8 +786,8 @@ function reset(onStartup=false) {
   // Make a simple network.
   iter = 0;
 
-  let numInputs = constructInput(0 , 0).length;
-  let shape = [numInputs].concat(state.networkShape).concat([1]);
+  //let numInputs = constructInput(0 , 0).length;
+  //let shape = [numInputs].concat(state.networkShape).concat([1]);
   //let outputActivation = (state.problem === Problem.REGRESSION) ?
   //    nn.Activations.LINEAR : nn.Activations.TANH;
   //network = cloud.buildNetwork(shape, constructInputIds(), state.initZero);
