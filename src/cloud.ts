@@ -10,12 +10,19 @@ export interface Connection {
   destination: number;
 };
 
+export interface Flow {
+  source: number;
+  destination: number;
+  service: number;
+  numStage: number;
+}
+
 export class Node {
   id: string;
   /** List of input links. */
   inputLinks: Link[] = [];
   /** List of output links. */
-  outputs: Link[] = [];
+  outputLinks: Link[] = [];
   /** Coordinates  */
   x: number;
   y: number;
@@ -37,8 +44,8 @@ export class Node {
   queues: {[name: string]: number};
 
   // records configuration
-	numResource: number;
-	packetID: PacketID;
+	numResource = 0;
+	packetID:PacketID = null;
 
   // records reconfiguration status
   timeRemainReconfiguration = 0;
@@ -50,39 +57,55 @@ export class Node {
     this.id = id;
     this.x = coor.x;
     this.y = coor.y;
-
-    //for (let i = 0; i < packetIDs.length; i++) {
-    //  this.queues[packetIDs[i].name] = 0;
-    //}
+  }
+  initQueues() {
+    for (let i = 0; i < PacketID.packetIDs.length; i++) {
+      this.queues[PacketID.packetIDs[i].name] = 0;
+    }
   }
 
-  scheduleAndExecute() {
-    this.scheduleProcess();
-    this.scheduleTransmission();
+  allocate(numResource:number, packetID:PacketID) {
+    if (numResource != this.numResource) {
+      this.numResource = numResource;
+      this.timeRemainReconfiguration = this.reconfigurationDelay;
+    }
+    if (packetID.name != this.packetID.name) {
+      this.packetID = packetID;
+      this.timeRemainReconfiguration = this.reconfigurationDelay;
+    }
+  }
+  process() {
+    if (this.timeRemainReconfiguration > 0) return;
+    let numProcess = Math.min(this.queues[this.packetID.name],
+                              this.resourceToCapacity(this.numResource));
+    // Todo: only packets that are in the queue at the beginning of the slot
+    this.queues[this.packetID.name] -= numProcess;
+    this.queues[this.packetID.nextPID.name] += numProcess;
+  }
+
+  processAndTransmit() {
     this.process();
-    this.transmission();
+    for (let l = 0; l < this.outputLinks.length; l++) {
+      this.outputLinks[l].transmit();
+    }
   }
-  scheduleProcess() {
-    let opt = this.maxWeight('process');
-
+  schedule() {
+    let opt;
     switch(this.policy) {
       case 'DCNC':
+        opt = this.maxWeight('process');
+        this.allocate(opt.resource, opt.pid);
+
+        for (let l = 0; l < this.outputLinks.length; l++) {
+          opt = this.maxWeight('transmission', this.outputLinks[l]);
+          this.outputLinks[l].allocate(opt.resource, opt.pid);
+        }
         break;
       case 'ADCNC':
         break;
       default:
         throw Error("Unknown policy");
     }
-
-  }
-  scheduleTransmission() {
-
-  }
-  process() {
-
-  }
-  transmission() {
-
   }
   maxWeight(func:string, link:Link = null) {
     // Let the score defined as [Q_i - Q_j - Ve]^+
@@ -183,6 +206,15 @@ export class PacketID {
     }
     return null;
   }
+  public static reset(flows: Flow[]) {
+    PacketID.packetIDs = [];
+    for (let f in flows) {
+      for (let s = 0; s <= flows[f].numStage; s++) {
+        PacketID.packetIDs.push(new PacketID(flows[f].destination, flows[f].service, s));
+      }
+
+    }
+  }
 }
 
 
@@ -192,69 +224,61 @@ export class Link {
   source: Node;
   destination: Node;
 
-  maxResource: number;
+
+  // parameters
+  transmissionCost = 1;
+  resourceToCost = (x: number) => x;
+  resourceToCapacity = (x: number) => x;
+  maxResource = 4;
+  reconfigurationDelay = 0;
+  reconfigurationCost = 0;
+
+  // records configuration
+	numResource: number;
+	packetID: PacketID;
+
+  // records reconfiguration status
+  timeRemainReconfiguration = 0;
+
+
 
   /**
    * Constructs a link in the neural network initialized with random weight.
    *
    * @param source The source node.
-   * @param dest The destination node.
+   * @param destination The destination node.
    */
   constructor(source: Node, destination: Node) {
     this.id = source.id + "-" + destination.id;
     this.source = source;
     this.destination = destination;
   }
+
+  allocate(numResource:number, packetID:PacketID) {
+    if (numResource != this.numResource) {
+      this.numResource = numResource;
+      this.timeRemainReconfiguration = this.reconfigurationDelay;
+    }
+    if (packetID.name != this.packetID.name) {
+      this.packetID = packetID;
+      this.timeRemainReconfiguration = this.reconfigurationDelay;
+    }
+  }
+
+  transmit() {
+    if (this.timeRemainReconfiguration > 0) return;
+    let numTransmission = Math.min(this.source.queues[this.packetID.name],
+                              this.resourceToCapacity(this.numResource));
+    // Todo: only packets that are in the queue at the beginning of the slot
+    this.source.queues[this.packetID.name] -= numTransmission;
+    this.destination.queues[this.packetID.name] += numTransmission;
+  }
 }
 
 
 /**
  * Builds a network.
- *
- * @param networkShape The shape of the network. E.g. [1, 2, 3, 1] means
- *   the network will have one input node, 2 nodes in first hidden layer,
- *   3 nodes in second hidden layer and 1 output node.
- * @param inputIds List of ids for the input nodes.
  */
-
-/*
-export function buildNetwork(
-    networkShape: number[],
-    inputIds: string[], initZero?: boolean): Node[][] {
-  let numLayers = networkShape.length;
-  let id = 1;
-  // List of layers, with each layer being a list of nodes.
-  let network: Node[][] = [];
-  for (let layerIdx = 0; layerIdx < numLayers; layerIdx++) {
-    let isOutputLayer = layerIdx === numLayers - 1;
-    let isInputLayer = layerIdx === 0;
-    let currentLayer: Node[] = [];
-    network.push(currentLayer);
-    let numNodes = networkShape[layerIdx];
-    for (let i = 0; i < numNodes; i++) {
-      let nodeId = id.toString();
-      if (isInputLayer) {
-        nodeId = inputIds[i];
-      } else {
-        id++;
-      }
-      let node = new Node(nodeId, {"x": 0, "y": 0});
-      currentLayer.push(node);
-      if (layerIdx >= 1) {
-        // Add links from nodes in the previous layer to this node.
-        for (let j = 0; j < network[layerIdx - 1].length; j++) {
-          let prevNode = network[layerIdx - 1][j];
-          let link = new Link(prevNode, node);
-          prevNode.outputs.push(link);
-          node.inputLinks.push(link);
-        }
-      }
-    }
-  }
-  return network;
-}
-*/
-
 
 export function buildNetwork(nodeLocations:Coordinate[],
     nodeConnections:Connection[]): Node[] {
@@ -273,19 +297,14 @@ export function buildNetwork(nodeLocations:Coordinate[],
     let dst = network[nodeConnections[l].destination];
     let link = new Link(src, dst);
 
-    src.outputs.push(link);
+    src.outputLinks.push(link);
     dst.inputLinks.push(link);
 
     // Make bidirectional link
     let link2 = new Link(dst, src);
-    dst.outputs.push(link2);
+    dst.outputLinks.push(link2);
     src.inputLinks.push(link2);
   }
 
   return network;
-}
-
-export function schedule(network: Node[]) {
-  for (let n = 0; n < network.length; n++) {
-  }
 }

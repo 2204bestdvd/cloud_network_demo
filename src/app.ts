@@ -33,8 +33,10 @@ let INPUTS: {[name: string]: InputFeature} = {
 
 let nodeCoordinates = [{"x": 40, "y": 30}, {"x": 180, "y": 180},
   {"x": 200, "y": 10}, {"x": 280, "y": 100}];
-let nodeConnections = [{"source": 0, "destination": 1}, {"source": 0, "destination": 2},
-  {"source": 2, "destination": 3}];
+let nodeConnections = [{"source": 0, "destination": 1},
+  {"source": 0, "destination": 2}, {"source": 2, "destination": 3}];
+let flows = [{"source": 0, "destination": 3, "service": 0, "numStage": 2},
+  {"source": 1, "destination": 2, "service": 1, "numStage": 2}];
 
 //let packetIDs: cloud.PacketID[];
 //let packetID1 = new cloud.PacketID(0,0,0);
@@ -323,7 +325,7 @@ function makeGUI() {
 
 
 function drawNode(cx: number, cy: number, nodeId: string, isInput: boolean,
-    container: d3.Selection<any,any,any,any>, node?: cloud.Node) {
+    container: d3.Selection<any,any,any,any>, node: cloud.Node) {
   let x = cx - RECT_SIZE / 2;
   let y = cy - RECT_SIZE / 2;
 
@@ -339,71 +341,17 @@ function drawNode(cx: number, cy: number, nodeId: string, isInput: boolean,
     .attr("width", RECT_SIZE)
     .attr("height", RECT_SIZE);
 
-  /*
-  let activeOrNotClass = state[nodeId] ? "active" : "inactive";
-  if (isInput) {
-    let label = INPUTS[nodeId].label != null ?
-        INPUTS[nodeId].label : nodeId;
-    // Draw the input label.
-    let text = nodeGroup.append("text").attr({
-      class: "main-label",
-      x: -10,
-      y: RECT_SIZE / 2, "text-anchor": "end"
-    });
-    if (/[_^]/.test(label)) {
-      let myRe = /(.*?)([_^])(.)/g;
-      let myArray;
-      let lastIndex;
-      while ((myArray = myRe.exec(label)) != null) {
-        lastIndex = myRe.lastIndex;
-        let prefix = myArray[1];
-        let sep = myArray[2];
-        let suffix = myArray[3];
-        if (prefix) {
-          text.append("tspan").text(prefix);
-        }
-        text.append("tspan")
-        .attr("baseline-shift", sep === "_" ? "sub" : "super")
-        .style("font-size", "9px")
-        .text(suffix);
-      }
-      if (label.substring(lastIndex)) {
-        text.append("tspan").text(label.substring(lastIndex));
-      }
-    } else {
-      text.append("tspan").text(label);
-    }
-    nodeGroup.classed(activeOrNotClass, true);
-  }
-  if (!isInput) {
-    // Draw the node's bias.
-    nodeGroup.append("rect")
-      .attr({
-        id: `bias-${nodeId}`,
-        x: -BIAS_SIZE - 2,
-        y: RECT_SIZE - BIAS_SIZE + 3,
-        width: BIAS_SIZE,
-        height: BIAS_SIZE,
-      }).on("mouseenter", function() {
-        updateHoverCard(HoverType.BIAS, node, d3.mouse(container.node()));
-      }).on("mouseleave", function() {
-        updateHoverCard(null);
-      });
-  }
-  */
-
-
   // Draw the node's canvas.
-  //let div = d3.select("#network").insert("div", ":first-child")
-  let div = d3.select("#network").insert("div")
+  let div = d3.select("#network").insert("div", ":first-child")
     .attr("id", `canvas-${nodeId}`)
     .attr("class", "canvas")
     .style("position", "absolute")
-    //.style("fillcolor", "red")
     .style("left", `${x + 3}px`)
     .style("top", `${y + 3}px`);
 
+  //let queues = div.selectAll(".queue").data(node.queues)
 
+  /*
   var numbers = [677, 86, 500, 235];
   var colors = ['red', 'blue', 'red', 'blue']
   div.append('svg')
@@ -416,9 +364,10 @@ function drawNode(cx: number, cy: number, nodeId: string, isInput: boolean,
     .attr('x', 1).attr('y', function (d,i) { return i * 3; })
     .attr('width',function (d) { return d/10 }   ).attr('height', 2 )
     //.attr('fill', 'royalblue');
-    .attr('fill', function(d,i) {return colors[i];})
+    .attr('fill', function(d,i) {return d3.interpolateRainbow(i/4);})
+  */
 
-  div.select('svg')
+  div.append('svg')
     .insert('rect', ':first-child')
     .attr('x', 0).attr('y', 10)
     .attr('width', 30).attr('height', 30)
@@ -748,7 +697,14 @@ function updateUI(firstStep = false) {
 
 function oneStep(): void {
   iter++;
+  updateUI();
 
+  for (let n = 0; n < network.length; n++) {
+    network[n].schedule();
+  }
+  for (let n = 0; n < network.length; n++) {
+    network[n].processAndTransmit();
+  }
   /*
   trainData.forEach((point, i) => {
     let input = constructInput(point.x, point.y);
@@ -762,7 +718,7 @@ function oneStep(): void {
   lossTrain = getLoss(network, trainData);
   lossTest = getLoss(network, testData);
   */
-  updateUI();
+  //updateUI();
 
 }
 
@@ -795,6 +751,10 @@ function reset(onStartup=false) {
   //lossTrain = getLoss(network, trainData);
   //lossTest = getLoss(network, testData);
   drawNetwork(network);
+
+  // Reset the list of packetIDs and initialize queues in nodes
+
+
 
   updateUI(true);
 };
