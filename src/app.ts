@@ -31,16 +31,30 @@ let INPUTS: {[name: string]: InputFeature} = {
 */
 
 
-let nodeCoordinates = [{"x": 40, "y": 30}, {"x": 180, "y": 180},
-  {"x": 200, "y": 10}, {"x": 280, "y": 100}];
+let nodeCoordinates = [{"x": 40, "y": 50}, {"x": 150, "y": 200},
+  {"x": 250, "y": 30}, {"x": 350, "y": 120}, {"x": 450, "y": 50}];
 let nodeConnections = [{"source": 0, "destination": 1},
-  {"source": 0, "destination": 2}, {"source": 2, "destination": 3}];
-let flows = [{"source": 0, "destination": 3, "service": 0, "numStage": 2},
-  {"source": 1, "destination": 2, "service": 1, "numStage": 2}];
+  {"source": 0, "destination": 2}, {"source": 2, "destination": 3},
+  {"source": 1, "destination": 3}, {"source": 2, "destination": 4}];
+let flows = [{"source": 0, "destination": 3, "service": 0, "numStage": 2, "rate": 3}];//,
+//  {"source": 1, "destination": 2, "service": 1, "numStage": 2, "rate": 2}];
+let policy = "DCNC";
+let V = 5;
 
 //let packetIDs: cloud.PacketID[];
 //let packetID1 = new cloud.PacketID(0,0,0);
 //let packetIDs = [packetID1];
+
+
+let linkWidthScale = d3.scaleLinear()
+  .domain([0, 4])
+  .range([0, 6])
+  .clamp(true);
+
+let colorScale = d3.scaleLinear<string, string>()
+    .domain([0, .5, 1])
+    .range(["#f1c405", "#f4b342", "#e52020"])
+    .clamp(true);
 
 
 class Player {
@@ -130,162 +144,24 @@ function makeGUI() {
     oneStep();
   });
 
-  /*
-  d3.select("#data-regen-button").on("click", () => {
-    generateData();
-    parametersChanged = true;
-  });
 
-  let dataThumbnails = d3.selectAll("canvas[data-dataset]");
-  dataThumbnails.on("click", function() {
-    let newDataset = datasets[this.dataset.dataset];
-    if (newDataset === state.dataset) {
-      return; // No-op.
-    }
-    state.dataset =  newDataset;
-    dataThumbnails.classed("selected", false);
-    d3.select(this).classed("selected", true);
-    generateData();
+  let policyDropdown = d3.select("#policies").on("change", function() {
+    policy = d3.select("#policies").property("value");
+    //policy = this.value;
     parametersChanged = true;
     reset();
+    console.log(policy);
   });
+  policyDropdown.property("value", policy);
 
-  let datasetKey = getKeyFromValue(datasets, state.dataset);
-  // Select the dataset according to the current state.
-  d3.select(`canvas[data-dataset=${datasetKey}]`)
-    .classed("selected", true);
-
-  let regDataThumbnails = d3.selectAll("canvas[data-regDataset]");
-  regDataThumbnails.on("click", function() {
-    let newDataset = regDatasets[this.dataset.regdataset];
-    if (newDataset === state.regDataset) {
-      return; // No-op.
-    }
-    state.regDataset =  newDataset;
-    regDataThumbnails.classed("selected", false);
-    d3.select(this).classed("selected", true);
-    generateData();
+  let VDropdown = d3.select("#parameterV").on("change", function() {
+    V = +d3.select("#parameterV").property("value");
     parametersChanged = true;
     reset();
+    console.log(V);
   });
+  VDropdown.property("value", V);
 
-  */
-
-  /*
-  let regDatasetKey = getKeyFromValue(regDatasets, state.regDataset);
-  // Select the dataset according to the current state.
-  d3.select(`canvas[data-regDataset=${regDatasetKey}]`)
-    .classed("selected", true);
-
-
-  d3.select("#add-layers").on("click", () => {
-    if (state.numHiddenLayers >= 6) {
-      return;
-    }
-    state.networkShape[state.numHiddenLayers] = 2;
-    state.numHiddenLayers++;
-    parametersChanged = true;
-    reset();
-  });
-
-  d3.select("#remove-layers").on("click", () => {
-    if (state.numHiddenLayers <= 0) {
-      return;
-    }
-    state.numHiddenLayers--;
-    state.networkShape.splice(state.numHiddenLayers);
-    parametersChanged = true;
-    reset();
-  });
-
-  let showTestData = d3.select("#show-test-data").on("change", function() {
-    state.showTestData = this.checked;
-    state.serialize();
-    userHasInteracted();
-    heatMap.updateTestPoints(state.showTestData ? testData : []);
-  });
-  // Check/uncheck the checkbox according to the current state.
-  showTestData.property("checked", state.showTestData);
-
-  let discretize = d3.select("#discretize").on("change", function() {
-    state.discretize = this.checked;
-    state.serialize();
-    userHasInteracted();
-    updateUI();
-  });
-  // Check/uncheck the checbox according to the current state.
-  discretize.property("checked", state.discretize);
-
-  let percTrain = d3.select("#percTrainData").on("input", function() {
-    state.percTrainData = this.value;
-    d3.select("label[for='percTrainData'] .value").text(this.value);
-    generateData();
-    parametersChanged = true;
-    reset();
-  });
-  percTrain.property("value", state.percTrainData);
-  d3.select("label[for='percTrainData'] .value").text(state.percTrainData);
-
-  let noise = d3.select("#noise").on("input", function() {
-    state.noise = this.value;
-    d3.select("label[for='noise'] .value").text(this.value);
-    generateData();
-    parametersChanged = true;
-    reset();
-  });
-  noise.property("value", state.noise);
-  d3.select("label[for='noise'] .value").text(state.noise);
-
-  let batchSize = d3.select("#batchSize").on("input", function() {
-    state.batchSize = this.value;
-    d3.select("label[for='batchSize'] .value").text(this.value);
-    parametersChanged = true;
-    reset();
-  });
-  batchSize.property("value", state.batchSize);
-  d3.select("label[for='batchSize'] .value").text(state.batchSize);
-
-  let activationDropdown = d3.select("#activations").on("change", function() {
-    state.activation = activations[this.value];
-    parametersChanged = true;
-    reset();
-  });
-  activationDropdown.property("value",
-      getKeyFromValue(activations, state.activation));
-
-  let learningRate = d3.select("#learningRate").on("change", function() {
-    state.learningRate = +this.value;
-    state.serialize();
-    userHasInteracted();
-    parametersChanged = true;
-  });
-  learningRate.property("value", state.learningRate);
-
-  let regularDropdown = d3.select("#regularizations").on("change",
-      function() {
-    state.regularization = regularizations[this.value];
-    parametersChanged = true;
-    reset();
-  });
-  regularDropdown.property("value",
-      getKeyFromValue(regularizations, state.regularization));
-
-  let regularRate = d3.select("#regularRate").on("change", function() {
-    state.regularizationRate = +this.value;
-    parametersChanged = true;
-    reset();
-  });
-  regularRate.property("value", state.regularizationRate);
-
-  let problem = d3.select("#problem").on("change", function() {
-    state.problem = problems[this.value];
-    generateData();
-    drawDatasetThumbnails();
-    parametersChanged = true;
-    reset();
-  });
-  problem.property("value", getKeyFromValue(problems, state.problem));
-  */
 
   // Add scale to the gradient color map.
   let x = d3.scaleLinear().domain([0, 4]).range([0, 144]);
@@ -302,13 +178,12 @@ function makeGUI() {
 
 
   // Listen for css-responsive changes and redraw the svg network.
-
   window.addEventListener("resize", () => {
     let newWidth = document.querySelector("#main-part")
         .getBoundingClientRect().width;
     if (newWidth !== mainWidth) {
       mainWidth = newWidth;
-      //drawNetwork(network);
+      drawNetwork(network);
       updateUI(true);
     }
   });
@@ -324,7 +199,7 @@ function makeGUI() {
 }
 
 
-function drawNode(cx: number, cy: number, nodeId: string, isInput: boolean,
+function drawNode(cx: number, cy: number, nodeId: number, isInput: boolean,
     container: d3.Selection<any,any,any,any>, node: cloud.Node) {
   let x = cx - RECT_SIZE / 2;
   let y = cy - RECT_SIZE / 2;
@@ -339,7 +214,16 @@ function drawNode(cx: number, cy: number, nodeId: string, isInput: boolean,
     .attr("x", 0)
     .attr("y", 0)
     .attr("width", RECT_SIZE)
-    .attr("height", RECT_SIZE);
+    .attr("height", RECT_SIZE)
+
+/*
+  nodeGroup.append('rect')
+    .attr("id", `resource-${nodeId}`)
+    .attr('x', -10).attr('y', 30)
+    .attr('width', 10).attr('height', 10)
+    .attr('fill', 'red');
+*/
+
 
   // Draw the node's canvas.
   let div = d3.select("#network").insert("div", ":first-child")
@@ -347,32 +231,51 @@ function drawNode(cx: number, cy: number, nodeId: string, isInput: boolean,
     .attr("class", "canvas")
     .style("position", "absolute")
     .style("left", `${x + 3}px`)
-    .style("top", `${y + 3}px`);
+    .style("top", `${y - 17}px`);
 
-  //let queues = div.selectAll(".queue").data(node.queues)
 
-  /*
-  var numbers = [677, 86, 500, 235];
-  var colors = ['red', 'blue', 'red', 'blue']
-  div.append('svg')
-    //.style("position", "absolute")
-    //.style("left", `${x - 10}px`)
-    //.style("top", `${y - 10}px`)
-    .attr('width', 80).attr('height', 80).selectAll('rect')
-    .data(numbers).enter()
+  let svg = div.append('svg');
+  let dataset = d3.entries(node.queues);
+  let numQueues = dataset.length;
+  svg.selectAll('rect')
+    .data(dataset).enter()
+    //.data(numbers).enter()
     .append('rect')
     .attr('x', 1).attr('y', function (d,i) { return i * 3; })
-    .attr('width',function (d) { return d/10 }   ).attr('height', 2 )
+    .attr('width',function (d) { return d.value }   ).attr('height', 2 )
+    //.attr('width',function (d) { return d/10 }   ).attr('height', 2 )
     //.attr('fill', 'royalblue');
-    .attr('fill', function(d,i) {return d3.interpolateRainbow(i/4);})
-  */
+    .attr('fill', function(d,i) {return d3.interpolatePlasma(i/numQueues);});
 
-  div.append('svg')
-    .insert('rect', ':first-child')
-    .attr('x', 0).attr('y', 10)
-    .attr('width', 30).attr('height', 30)
-    .attr('fill', '#e52020');
 
+  // Draw node resource
+  if (node.timeRemainReconfiguration > 0) {
+    svg.append('rect')
+      .attr('x', 0).attr('y', 20)
+      .attr('width', RECT_SIZE).attr('height', RECT_SIZE)
+      .attr('fill', 'gray');
+  } else {
+    let resourceHeight = RECT_SIZE * node.numResource / 4;
+    svg.append('rect')
+      .attr('x', 0).attr('y', 20 + RECT_SIZE - resourceHeight)
+      .attr('width', RECT_SIZE).attr('height', resourceHeight)
+      .attr('fill', colorScale(node.numResource/4));
+  }
+  // Draw commodity being processed
+  let servedQueue = -1;
+  if (node.packetID) {
+    for (let i = 0; i < dataset.length; i++) {
+      if (dataset[i].key == node.packetID.name) {
+        servedQueue = i;
+      }
+    }
+  }
+  if (servedQueue >= 0) {
+    svg.append('rect')
+      .attr('x', 0).attr('y', 20 + RECT_SIZE + 10)
+      .attr('width', 10).attr('height', 10)
+      .attr('fill', d3.interpolatePlasma(servedQueue/numQueues));
+  }
 
     /*
     .on("mouseenter", function() {
@@ -445,7 +348,7 @@ function drawNetwork(network: cloud.Node[]): void {
     let node = network[i];
     for (let j = 0; j < node.inputLinks.length; j++) {
       let link = node.inputLinks[j];
-      let path: SVGPathElement = drawLink2(link,
+      let path: SVGPathElement = drawLink(link,
           container, j === 0, j, node.inputLinks.length).node() as any;
     }
   }
@@ -453,122 +356,18 @@ function drawNetwork(network: cloud.Node[]): void {
 
 }
 
-/*
-// Draw network
-function drawNetwork(network: cloud.Node[][]): void {
-  let svg = d3.select("#svg");
-  // Remove all svg elements.
-  svg.select("g.core").remove();
-  // Remove all div elements.
-  d3.select("#network").selectAll("div.canvas").remove();
-  d3.select("#network").selectAll("div.plus-minus-neurons").remove();
 
-  // Get the width of the svg container.
-  let padding = 3;
-  let co = d3.select(".column.output").node() as HTMLDivElement;
-  let cf = d3.select(".column.topology").node() as HTMLDivElement;
-  let width = co.offsetLeft - cf.offsetLeft;
-  svg.attr("width", width);
-
-  // Map of all node coordinates.
-  let node2coord: {[id: string]: {cx: number, cy: number}} = {};
-  let container = svg.append("g")
-    .classed("core", true)
-    .attr("transform", `translate(${padding},${padding})`);
-  // Draw the network layer by layer.
-  let numLayers = network.length;
-  let featureWidth = 118;
-  let layerScale = d3.scaleOrdinal<number, number>()
-      .domain(d3.range(1, numLayers - 1))
-      .range([featureWidth, width - RECT_SIZE])
-      //.rangePoints([featureWidth, width - RECT_SIZE], 0.7);
-  let nodeIndexScale = (nodeIndex: number) => nodeIndex * (RECT_SIZE + 25);
-
-
-  let calloutThumb = d3.select(".callout.thumbnail").style("display", "none");
-  let calloutWeights = d3.select(".callout.weights").style("display", "none");
-  let idWithCallout = null;
-  let targetIdWithCallout = null;
-
-  // Draw the input layer separately.
-  let cx = RECT_SIZE / 2 + 50;
-  let nodeIds = Object.keys(INPUTS);
-  let maxY = nodeIndexScale(nodeIds.length);
-  nodeIds.forEach((nodeId, i) => {
-    let cy = nodeIndexScale(i) + RECT_SIZE / 2;
-    node2coord[nodeId] = {cx, cy};
-    drawNode(cx, cy, nodeId, true, container);
-  });
-
-
-
-  // Draw the intermediate layers.
-  for (let layerIdx = 1; layerIdx < numLayers - 1; layerIdx++) {
-    let numNodes = network[layerIdx].length;
-    let cx = layerScale(layerIdx) + RECT_SIZE / 2;
-    maxY = Math.max(maxY, nodeIndexScale(numNodes));
-    //addPlusMinusControl(layerScale(layerIdx), layerIdx);
-    for (let i = 0; i < numNodes; i++) {
-      let node = network[layerIdx][i];
-      let cy = nodeIndexScale(i) + RECT_SIZE / 2;
-      node2coord[node.id] = {cx, cy};
-      drawNode(cx, cy, node.id, false, container, node);
-
-
-      // Draw links.
-
-      for (let j = 0; j < node.inputLinks.length; j++) {
-        let link = node.inputLinks[j];
-        let path: SVGPathElement = drawLink(link, node2coord, network,
-            container, j === 0, j, node.inputLinks.length).node() as any;
-
-      }
-
-    }
-  }
-
-
-
-
-  // Draw the output node separately.
-  cx = width + RECT_SIZE / 2;
-  let node = network[numLayers - 1][0];
-  let cy = nodeIndexScale(0) + RECT_SIZE / 2;
-  node2coord[node.id] = {cx, cy};
-  // Draw links.
-  for (let i = 0; i < node.inputLinks.length; i++) {
-    let link = node.inputLinks[i];
-    drawLink(link, node2coord, network, container, i === 0, i,
-        node.inputLinks.length);
-  }
-
-  // Adjust the height of the svg.
-  svg.attr("height", maxY);
-
-  // Adjust the height of the topology column.
-  let height = Math.max(
-    getRelativeHeight(calloutThumb),
-    getRelativeHeight(calloutWeights),
-    getRelativeHeight(d3.select("#network"))
-  );
-  d3.select(".column.topology").style("height", height + "px");
-}
-*/
-
-function getRelativeHeight(selection: d3.Selection<any,any,any,any>) {
-  let node = selection.node() as HTMLAnchorElement;
-  return node.offsetHeight + node.offsetTop;
-}
-
-function drawLink2(
-    input: cloud.Link,
+function drawLink(
+    link: cloud.Link,
     container: d3.Selection<any,any,any,any>,
     isFirst: boolean, index: number, length: number) {
   let line = container.insert("path", ":first-child");
+  let lineResource = container.insert("path", ":first-child");
+  let transmitted = container.insert("rect", ":first-child");
   //let source = node2coord[input.source.id];
   //let dest = node2coord[input.dest.id];
-  let src = input.source;
-  let dst = input.destination;
+  let src = link.source;
+  let dst = link.destination;
   let datum = {
     source: {
       y: src.x + RECT_SIZE / 2 * (dst.x - src.x) / Math.abs(dst.x - src.x),
@@ -590,61 +389,69 @@ function drawLink2(
 
   line.attr("marker-start", "url(#markerArrow)")
     .attr("class", "link")
-    .attr("id", "link" + input.source.id + "-" + input.destination.id)
-    .attr("d", diagonal(datum));
+    .attr("id", "link" + link.source.id + "-" + link.destination.id)
+    .attr("d", diagonal(datum))
+
+  lineResource.attr("marker-start", "url(#markerArrow)")
+    .attr("class", "link")
+    .attr("id", "link" + link.source.id + "-" + link.destination.id + "-resource")
+    .attr("d", diagonal(datum))
+    .style("stroke-dashoffset", -iter / 3)
+    .style("stroke-width", linkWidthScale(Math.abs(link.numResource)))
+    .style("stroke", colorScale(link.numResource / 4));
+
+
+  let dataset = d3.entries(link.source.queues);
+  let numQueues = dataset.length;
+
+  // Draw commodity being processed
+  let servedQueue = -1;
+  if (link.packetID) {
+    for (let i = 0; i < dataset.length; i++) {
+      if (dataset[i].key == link.packetID.name) {
+        servedQueue = i;
+      }
+    }
+  }
+  if (servedQueue >= 0) {
+    transmitted.attr('x', datum.source.y + ((datum.target.y > datum.source.y)?3:-13))
+      .attr('y', datum.source.x + 3)
+      .attr('width', 10).attr('height', 10)
+      .attr('fill', d3.interpolatePlasma(servedQueue/numQueues));
+  }
+
+    // Add an invisible thick link that will be used for
+    // showing the weight value on hover.
+    /*
+    container.append("path")
+      //.attr("d", diagonal(datum, 0))
+      .attr("d", d3.linkHorizontal()
+            .x(function(d) {return d[0];})
+            .y(function(d) {return d[1];}))
+      .attr("class", "link-hover");
+      //.on("mouseenter", function() {
+      //  updateHoverCard(HoverType.WEIGHT, input, d3.mouse(this));
+      //}).on("mouseleave", function() {
+      //  updateHoverCard(null);
+      //});
+    */
 
   return line;
 }
 
-function drawLink(
-    input: cloud.Link, node2coord: {[id: string]: {cx: number, cy: number}},
-    network: cloud.Node[][], container: d3.Selection<any,any,any,any>,
-    isFirst: boolean, index: number, length: number) {
-  let line = container.insert("path", ":first-child");
-  let source = node2coord[input.source.id];
-  let destination = node2coord[input.destination.id];
-  let datum = {
-    source: {
-      y: source.cx + RECT_SIZE / 2,
-      x: source.cy
-    },
-    target: {
-      y: destination.cx - RECT_SIZE / 2,
-      x: destination.cy + ((index - (length - 1) / 2) / length) * 12
+
+function updateLinkUI(network: cloud.Node[], container: d3.Selection<any,any,any,any>) {
+  for (let n = 0; n < network.length; n++) {
+    let node = network[n];
+    for (let l = 0; l < node.inputLinks.length; l++) {
+      let link = node.inputLinks[l];
+      container.select(`#link${link.source.id}-${link.destination.id}`)
+          .style("stroke-dashoffset", -iter / 3)
+          .style("stroke-width", linkWidthScale(Math.abs(link.numResource)))
+          .style("stroke", colorScale(link.numResource))
+          .datum(link);
     }
-  };
-  //let diagonal = d3.svg.diagonal().projection(d => [d.y, d.x]);
-
-  let diagonal = function link(d:any) {
-    return "M" + d.source.y + "," + d.source.x
-        + "C" + (d.source.y + d.target.y) / 2 + "," + d.source.x
-        + " " + (d.source.y + d.target.y) / 2 + "," + d.target.x
-        + " " + d.target.y + "," + d.target.x;
   }
-
-  line.attr("marker-start", "url(#markerArrow)")
-    .attr("class", "link")
-    .attr("id", "link" + input.source.id + "-" + input.destination.id)
-    .attr("d", diagonal(datum));
-    //.attr("d", diagonal(datum, 0));
-
-
-  // Add an invisible thick link that will be used for
-  // showing the weight value on hover.
-  /*
-  container.append("path")
-    //.attr("d", diagonal(datum, 0))
-    .attr("d", d3.linkHorizontal()
-          .x(function(d) {return d[0];})
-          .y(function(d) {return d[1];}))
-    .attr("class", "link-hover");
-    //.on("mouseenter", function() {
-    //  updateHoverCard(HoverType.WEIGHT, input, d3.mouse(this));
-    //}).on("mouseleave", function() {
-    //  updateHoverCard(null);
-    //});
-  */
-  return line;
 }
 
 
@@ -690,6 +497,7 @@ function updateUI(firstStep = false) {
   d3.select("#iter-number").text(addCommas(zeroPad(iter)));
   //lineChart.addDataPoint([lossTrain, lossTest]);
 
+  drawNetwork(network);
 }
 
 
@@ -698,13 +506,25 @@ function updateUI(firstStep = false) {
 function oneStep(): void {
   iter++;
   updateUI();
+  for (let n = 0; n < network.length; n++) {
+    network[n].timeRemainReconfiguration = Math.max(0, network[n].timeRemainReconfiguration - 1);
+    for (let l in network[n].outputLinks) {
+      network[n].outputLinks[l].timeRemainReconfiguration =
+        Math.max(0, network[n].outputLinks[l].timeRemainReconfiguration - 1);
+    }
+  }
 
   for (let n = 0; n < network.length; n++) {
     network[n].schedule();
   }
   for (let n = 0; n < network.length; n++) {
     network[n].processAndTransmit();
+    //console.log(network[n].id, network[n].numResource, network[n].queues);
   }
+  cloud.arrival(network);
+
+  for (let n = 0; n < 20000000; n++) {}
+
   /*
   trainData.forEach((point, i) => {
     let input = constructInput(point.x, point.y);
@@ -747,9 +567,9 @@ function reset(onStartup=false) {
   //let outputActivation = (state.problem === Problem.REGRESSION) ?
   //    nn.Activations.LINEAR : nn.Activations.TANH;
   //network = cloud.buildNetwork(shape, constructInputIds(), state.initZero);
-  network = cloud.buildNetwork(nodeCoordinates, nodeConnections);
   //lossTrain = getLoss(network, trainData);
   //lossTest = getLoss(network, testData);
+  network = cloud.buildNetwork(nodeCoordinates, nodeConnections, flows, policy, V);
   drawNetwork(network);
 
   // Reset the list of packetIDs and initialize queues in nodes
