@@ -29,6 +29,11 @@
           <i class="material-icons">skip_next</i>
         </button>
       </div>
+      <div class="timeline-speed">
+        <p class="slider">
+          <input class="mdl-slider mdl-js-slider" type="range" id="speed" min="0" max="50" step="1">
+        </p>
+      </div>
       <div class="control">
         <span class="label">Simulation Time</span>
         <span class="value" id="iter-number"></span>
@@ -66,25 +71,8 @@
     <!--  Data Column-->
     <div class="column data">
       <h4>
-        <span>Service</span>
+        <span>Settings</span>
       </h4>
-      <div class="ui-dataset">
-        <p>Select service pattern</p>
-        <div class="dataset-list">
-          <div class="dataset" title="Circle">
-            <canvas class="data-thumbnail" data-dataset="circle"></canvas>
-          </div>
-          <div class="dataset" title="Exclusive or">
-            <canvas class="data-thumbnail" data-dataset="xor"></canvas>
-          </div>
-          <div class="dataset" title="Gaussian">
-            <canvas class="data-thumbnail" data-dataset="gauss"></canvas>
-          </div>
-          <div class="dataset" title="Spiral">
-            <canvas class="data-thumbnail" data-dataset="spiral"></canvas>
-          </div>
-        </div>
-      </div>
       <div>
         <div class="ui-reconfigDelay">
           <label for="reconfigDelay">Reconfiguration Delay:&nbsp;&nbsp;<span class="value">XX</span></label>
@@ -101,7 +89,7 @@
         <div class="ui-arrivalRate">
           <label for="arrivalRate">Arrival Rate:&nbsp;&nbsp;<span class="value">XX</span></label>
           <p class="slider">
-            <input class="mdl-slider mdl-js-slider" type="range" id="arrivalRate" min="0" max="4" step="1">
+            <input class="mdl-slider mdl-js-slider" type="range" id="arrivalRate" min="0" max="4" step="0.5">
           </p>
         </div>
           <!--
@@ -129,21 +117,6 @@
           <div style="font-size:10px">Click anywhere to edit.</div>
           <div><span class="type">Weight/Bias</span> is <span class="value">0.2</span><span><input type="number"/></span>.</div>
         </div>
-        <!--
-        <div class="callout thumbnail">
-          <svg viewBox="0 0 30 30">
-            <defs>
-              <marker id="arrow" markerWidth="5" markerHeight="5" refx="5" refy="2.5" orient="auto" markerUnits="userSpaceOnUse">
-                <path d="M0,0 L5,2.5 L0,5 z"/>
-              </marker>
-            </defs>
-            <path d="M12,30C5,20 2,15 12,0" marker-end="url(#arrow)">
-          </svg>
-          <div class="label">
-            This is the output from one <b>neuron</b>. Hover to see it larger.
-          </div>
-        </div>
-        //-->
       </div>
     </div>
 
@@ -151,23 +124,26 @@
     <div class="column output">
       <h4>Output</h4>
       <div class="metrics">
-        <div class="output-stats ui-percTrainData">
-          <span>Mean Queue Length</span>
-          <div class="value" id="loss-test"></div>
-        </div>
-        <div class="output-stats train">
-          <span>Mean Cost</span>
-          <div class="value" id="loss-train"></div>
+        <div class="output-stats ui-queueLength">
+          <span>Mean Queue Length</span><br>
+          <div class="value" id="queueLength"></div>
         </div>
         <div id="linechart"></div>
       </div>
+      <div class="metrics">
+        <div class="output-stats cost">
+          <span>Mean Cost</span><br>
+          <div class="value" id="cost"></div>
+        </div>
+        <div id="linechart2"></div>
+      </div>
       <div id="heatmap"></div>
-      <div style="float:left;margin-top:20px">
+      <div style="float:left;margin-top:80px">
         <div style="display:flex; align-items:center;">
 
           <!-- Gradient color scale -->
           <div class="label" style="width:105px; margin-right: 10px">
-            Colors show flow values.
+            Colors show number of resources units.
           </div>
           <svg width="150" height="30" id="colormap">
             <defs>
@@ -183,20 +159,12 @@
           </svg>
         </div>
         <br/>
-
-        <!--
-        <div style="display:flex;">
-          <label class="ui-showTestData mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="show-test-data">
-            <input type="checkbox" id="show-test-data" class="mdl-checkbox__input" checked>
-            <span class="mdl-checkbox__label label">Show test data</span>
-          </label>
-          <label class="ui-discretize mdl-checkbox mdl-js-checkbox mdl-js-ripple-effect" for="discretize">
-            <input type="checkbox" id="discretize" class="mdl-checkbox__input" checked>
-            <span class="mdl-checkbox__label label">Discretize output</span>
-          </label>
-        </div>
-        -->
       </div>
+      <div style="float:left;margin-top:20px">
+        <svg width="150" height="30" id="commodity">
+        </svg>
+      </div>
+
     </div>
 
   </div>
