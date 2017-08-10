@@ -799,8 +799,17 @@ g.column rect {
   top: 0;
   right: 0;
   width: 50%;
-  height: 55px;
+  height: 80px;
 }
+#linechart2 {
+  position: absolute;
+  top: 50;
+  right: 0;
+  width: 50%;
+  height: 80px;
+}
+
+
 .metrics .train {
   color: #777;
 }
