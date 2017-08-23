@@ -60,12 +60,10 @@ export class Node {
   /**
    * Creates a new node with the provided id
    */
-  constructor(id: number, coor: Coordinate, policy:string, V:number) {
+  constructor(id: number, coor: Coordinate) {
     this.id = id;
     this.x = coor.x;
     this.y = coor.y;
-    this.policy = policy;
-    this.V = V;
   }
   initQueues() {
     for (let i = 0; i < PacketID.packetIDs.length; i++) {
@@ -225,6 +223,16 @@ export class Node {
         throw Error("Unknown type of function");
     }
   }
+  calculateCost() :number {
+    let cost = this.resourceToCost(this.numResource)
+                + this.processCost * this.resourceToCapacity(this.numResource);
+    for (let l in this.outputLinks) {
+      let link = this.outputLinks[l];
+      cost += link.resourceToCost(link.numResource);
+      cost += link.transmissionCost * link.resourceToCapacity(link.numResource);
+    }
+    return cost;
+  }
 
 }
 
@@ -356,13 +364,13 @@ export class Link {
  */
 
 export function buildNetwork(nodeLocations:Coordinate[],
-    nodeConnections:Connection[], flows: Flow[], policy:string, V: number): Node[] {
+    nodeConnections:Connection[], flows: Flow[]): Node[] {
   let network: Node[] = [];
 
   // Add nodes with node id and coordinate
   for (let n = 0; n < nodeLocations.length; n++) {
     let nodeId = n;
-    let node = new Node(nodeId, nodeLocations[n], policy, V);
+    let node = new Node(nodeId, nodeLocations[n]);
     network.push(node);
   }
 
@@ -399,6 +407,19 @@ export function buildNetwork(nodeLocations:Coordinate[],
 
   return network;
 }
+
+export function setParameter (network: Node[], policy: string, V: number,
+                              reconfigDelay: number) {
+  for (let n in network) {
+    network[n].policy = policy;
+    network[n].V = V;
+    network[n].reconfigurationDelay = reconfigDelay;
+    for (let l in network[n].outputLinks) {
+      network[n].outputLinks[l].reconfigurationDelay = reconfigDelay;
+    }
+  }
+}
+
 
 export function arrival(network:Node[]) {
   for (let n = 0; n < network.length; n++) {

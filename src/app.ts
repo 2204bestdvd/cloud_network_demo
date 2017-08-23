@@ -4,10 +4,12 @@ import {
   getKeyFromValue
 } from "./state";
 import * as d3 from "d3";
+import {AppendingLineChart} from "./linechart";
 
 let mainWidth: number;
 
 const RECT_SIZE = 50;
+const COMMODITY_SIZE = 10;
 
 /*
 enum HoverType {
@@ -31,15 +33,21 @@ let INPUTS: {[name: string]: InputFeature} = {
 */
 
 
-let nodeCoordinates = [{"x": 40, "y": 50}, {"x": 150, "y": 200},
-  {"x": 250, "y": 30}, {"x": 350, "y": 120}, {"x": 450, "y": 50}];
+
+let nodeCoordinates = [{"x": 40, "y": 80}, {"x": 150, "y": 230},
+  {"x": 220, "y": 30}, {"x": 320, "y": 150}, {"x": 400, "y": 60},
+  {"x": 500, "y": 180}];
 let nodeConnections = [{"source": 0, "destination": 1},
   {"source": 0, "destination": 2}, {"source": 2, "destination": 3},
-  {"source": 1, "destination": 3}, {"source": 2, "destination": 4}];
-let flows = [{"source": 0, "destination": 3, "service": 0, "numStage": 2, "rate": 3}];//,
+  {"source": 1, "destination": 3}, {"source": 2, "destination": 4},
+  {"source": 3, "destination": 5}, {"source": 4, "destination": 5}];
+let flows = [{"source": 0, "destination": 5, "service": 0, "numStage": 2, "rate": 3}];//,
 //  {"source": 1, "destination": 2, "service": 1, "numStage": 2, "rate": 2}];
 let policy = "DCNC";
 let V = 5;
+let reconfigDelay = 0;
+let reconfigCost = 0;
+let rate = 3;
 
 //let packetIDs: cloud.PacketID[];
 //let packetID1 = new cloud.PacketID(0,0,0);
@@ -116,6 +124,9 @@ let iter = 0;
 let network: cloud.Node[] = null;
 
 let player = new Player();
+let speedDelay = 1;
+let lineChart = new AppendingLineChart(d3.select("#linechart"), ["black"]);
+let lineChart2 = new AppendingLineChart(d3.select("#linechart2"), ["black"]);
 
 
 function makeGUI() {
@@ -143,6 +154,43 @@ function makeGUI() {
     }
     oneStep();
   });
+
+  let speedBar = d3.select("#speed").on("input", function() {
+    speedDelay = d3.select("#speed").property("value");
+  });
+  speedBar.property("value", speedDelay);
+
+
+  let reconfigDelayBar = d3.select("#reconfigDelay").on("input", function() {
+    reconfigDelay = d3.select("#reconfigDelay").property("value");
+    d3.select("label[for='reconfigDelay'] .value").text(reconfigDelay);
+    reset();
+  });
+  reconfigDelayBar.property("value", reconfigDelay);
+  d3.select("label[for='reconfigDelay'] .value").text(reconfigDelay);
+
+  let reconfigCostBar = d3.select("#reconfigCost").on("input", function() {
+    reconfigCost = d3.select("#reconfigCost").property("value");
+    d3.select("label[for='reconfigCost'] .value").text(reconfigCost);
+    reset();
+  });
+  reconfigCostBar.property("value", reconfigCost);
+  d3.select("label[for='reconfigCost'] .value").text(reconfigCost);
+
+  let rateBar = d3.select("#arrivalRate").on("input", function() {
+    rate = d3.select("#arrivalRate").property("value");
+    d3.select("label[for='arrivalRate'] .value").text(rate);
+    for (let f in flows) {
+      flows[f].rate = rate;
+    }
+    reset();
+  });
+  rateBar.property("value", rate);
+  d3.select("label[for='arrivalRate'] .value").text(rate);
+  for (let f in flows) {
+    flows[f].rate = rate;
+  }
+
 
 
   let policyDropdown = d3.select("#policies").on("change", function() {
@@ -203,18 +251,26 @@ function drawNode(cx: number, cy: number, nodeId: number, isInput: boolean,
     container: d3.Selection<any,any,any,any>, node: cloud.Node) {
   let x = cx - RECT_SIZE / 2;
   let y = cy - RECT_SIZE / 2;
+  let stroke = 0.5
 
+/*
   let nodeGroup = container.append("g")
     .attr("class", "node")
     .attr("id", `node${nodeId}`)
-    .attr("transform", `translate(${x},${y})`);
-
+    .attr("transform", `translate(${x},${y})`)
+    .attr("fill", "black")
+    .attr("stroke-width", "5");
+*/
   // Draw the main rectangle.
-  nodeGroup.append("rect")
-    .attr("x", 0)
-    .attr("y", 0)
+  container.append("rect")
+    .attr("x", x)
+    .attr("y", y)
     .attr("width", RECT_SIZE)
     .attr("height", RECT_SIZE)
+    .attr("stroke", "grey")
+    .attr("stroke-width", stroke)
+    .attr("fill", "white");
+
 
 /*
   nodeGroup.append('rect')
@@ -272,7 +328,7 @@ function drawNode(cx: number, cy: number, nodeId: number, isInput: boolean,
   }
   if (servedQueue >= 0) {
     svg.append('rect')
-      .attr('x', 0).attr('y', 20 + RECT_SIZE + 10)
+      .attr('x', (RECT_SIZE - COMMODITY_SIZE)/2).attr('y', 20 + RECT_SIZE + COMMODITY_SIZE)
       .attr('width', 10).attr('height', 10)
       .attr('fill', d3.interpolatePlasma(servedQueue/numQueues));
   }
@@ -330,6 +386,8 @@ function drawNetwork(network: cloud.Node[]): void {
   let container = svg.append("g")
     .classed("core", true)
     .attr("transform", `translate(${padding},${padding})`);
+    //.attr("fill", "black")
+    //.attr("stroke-width", "5");
 
   let numNodes = network.length;
 
@@ -392,13 +450,25 @@ function drawLink(
     .attr("id", "link" + link.source.id + "-" + link.destination.id)
     .attr("d", diagonal(datum))
 
-  lineResource.attr("marker-start", "url(#markerArrow)")
-    .attr("class", "link")
-    .attr("id", "link" + link.source.id + "-" + link.destination.id + "-resource")
-    .attr("d", diagonal(datum))
-    .style("stroke-dashoffset", -iter / 3)
-    .style("stroke-width", linkWidthScale(Math.abs(link.numResource)))
-    .style("stroke", colorScale(link.numResource / 4));
+
+  if (link.timeRemainReconfiguration > 0) {
+    lineResource.attr("marker-start", "url(#markerArrow)")
+      .attr("class", "linkFill")
+      .attr("id", "link" + link.source.id + "-" + link.destination.id + "-resource")
+      .attr("d", diagonal(datum))
+      .style("stroke-width", linkWidthScale(Math.abs(link.maxResource)))
+      .style("stroke", 'gray');
+  } else {
+    lineResource.attr("marker-start", "url(#markerArrow)")
+      .attr("class", "link")
+      .attr("id", "link" + link.source.id + "-" + link.destination.id + "-resource")
+      .attr("d", diagonal(datum))
+      .style("stroke-dashoffset", -iter / 3)
+      .style("stroke-width", linkWidthScale(Math.abs(link.numResource)))
+      .style("stroke", colorScale(link.numResource / 4));
+  }
+
+
 
 
   let dataset = d3.entries(link.source.queues);
@@ -495,7 +565,19 @@ function updateUI(firstStep = false) {
   d3.select("#loss-test").text(humanReadable(lossTest));
   */
   d3.select("#iter-number").text(addCommas(zeroPad(iter)));
-  //lineChart.addDataPoint([lossTrain, lossTest]);
+  let totalQueueLength = 0;
+  let totalCost = 0;
+  for (let n in network) {
+    totalQueueLength += d3.values(network[n].queues).reduce((a, b) => a + b, 0);
+    totalCost += network[n].calculateCost();
+  }
+
+  lineChart.addDataPoint([totalQueueLength]);
+  lineChart2.addDataPoint([totalCost]);
+
+  d3.select("#queueLength").text(humanReadable(totalQueueLength));
+  d3.select("#cost").text(humanReadable(totalCost));
+
 
   drawNetwork(network);
 }
@@ -523,7 +605,7 @@ function oneStep(): void {
   }
   cloud.arrival(network);
 
-  for (let n = 0; n < 20000000; n++) {}
+  for (let n = 0; n < 100000 * speedDelay; n++) {}
 
   /*
   trainData.forEach((point, i) => {
@@ -544,8 +626,9 @@ function oneStep(): void {
 
 
 function reset(onStartup=false) {
-  /*
   lineChart.reset();
+  lineChart2.reset();
+  /*
   state.serialize();
   */
   if (!onStartup) {
@@ -569,7 +652,8 @@ function reset(onStartup=false) {
   //network = cloud.buildNetwork(shape, constructInputIds(), state.initZero);
   //lossTrain = getLoss(network, trainData);
   //lossTest = getLoss(network, testData);
-  network = cloud.buildNetwork(nodeCoordinates, nodeConnections, flows, policy, V);
+  network = cloud.buildNetwork(nodeCoordinates, nodeConnections, flows);
+  cloud.setParameter(network, policy, V, reconfigDelay);
   drawNetwork(network);
 
   // Reset the list of packetIDs and initialize queues in nodes
