@@ -262,6 +262,7 @@ export class PacketID {
   }
 
   public static packetIDs: PacketID[];
+  public static packetIDLegends: {[name:string]: number}[] = [];
 
   public static getPIDfromName(name: string) :PacketID {
     for (let i = 0; i < PacketID.packetIDs.length; i++) {
@@ -282,11 +283,16 @@ export class PacketID {
   public static reset(flows: Flow[]) {
     // Reconstruct list of packet IDs
     PacketID.packetIDs = [];
+    PacketID.packetIDLegends = [];
     for (let f in flows) {
+      let flowLegends: {[name:string]: number} = {};
       for (let s = 0; s <= flows[f].numStage; s++) {
-        PacketID.packetIDs.push(new PacketID(flows[f].destination, flows[f].service,
-                                              s, flows[f].numStage));
+        let pid = new PacketID(flows[f].destination, flows[f].service, s,
+                                flows[f].numStage)
+        PacketID.packetIDs.push(pid);
+        flowLegends[pid.name] = PacketID.packetIDs.length-1;
       }
+      PacketID.packetIDLegends.push(flowLegends);
     }
     // Assign next PID for each PID
     for (let i = 0; i < PacketID.packetIDs.length; i++) {

@@ -49,7 +49,7 @@ let reconfigDelay = 0;
 let reconfigCost = 0;
 let rate = 3;
 
-//let packetIDs: cloud.PacketID[];
+//let f: cloud.PacketID[];
 //let packetID1 = new cloud.PacketID(0,0,0);
 //let packetIDs = [packetID1];
 
@@ -246,6 +246,35 @@ function makeGUI() {
   */
 }
 
+function drawCommodityLegend() {
+  // Add commodity indication
+  let svg = d3.select("#commodity");
+  // Remove all svg elements.
+  svg.select("g").remove();
+
+  let dataset = cloud.PacketID.packetIDLegends;//[[2,3,4], [5,6,7]];
+  let numIDs = cloud.PacketID.packetIDs.length;
+
+  for (let i = 0; i < dataset.length; i++) {
+    //let numIDs = dataset[i].length;
+    let group = svg.append("g")
+    group.attr("class", `group-${i}`)
+      .attr("transform", `translate(0,${30*i+20})`)
+      .selectAll('rect')
+      .data(d3.entries(dataset[i])).enter()
+        .append('rect')
+        .attr('text', function(d,i) {return i.toString();})
+        .attr('x', function (d,i) { return i * 50; }).attr('y', 1)
+        .attr('width', 10).attr('height', 10)
+        .attr('fill', function(d,i) {return d3.interpolatePlasma(d.value/numIDs);});
+
+    group.selectAll('text')
+      .data(d3.entries(dataset[i])).enter()
+        .append('text')
+        .text(function(d,i) {return d.key;})
+        .attr('x', function (d,i) { return i * 50; }).attr('y', 20)
+  }
+}
 
 function drawNode(cx: number, cy: number, nodeId: number, isInput: boolean,
     container: d3.Selection<any,any,any,any>, node: cloud.Node) {
@@ -293,6 +322,7 @@ function drawNode(cx: number, cy: number, nodeId: number, isInput: boolean,
   let svg = div.append('svg');
   let dataset = d3.entries(node.queues);
   let numQueues = dataset.length;
+  // Draw queue lengths
   svg.selectAll('rect')
     .data(dataset).enter()
     //.data(numbers).enter()
@@ -656,9 +686,7 @@ function reset(onStartup=false) {
   cloud.setParameter(network, policy, V, reconfigDelay);
   drawNetwork(network);
 
-  // Reset the list of packetIDs and initialize queues in nodes
-
-
+  drawCommodityLegend();
 
   updateUI(true);
 };
